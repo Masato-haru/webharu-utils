@@ -1,0 +1,1015 @@
+/**
+ * WebHaru Utils v1 - Refactored
+ * A modular, reliable utility library for Webflow
+ *
+ * Features: Pagination, Filter, Sort, LoadMore, TOC, External Links,
+ * Form Guard, UTM Capture, Video Autoplay, Scrollspy, Text Trim, Breadcrumbs
+ */
+
+(function (global, factory) {
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory();
+  } else {
+    global.WU = factory();
+  }
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  // ============================================================================
+  // Core Utilities
+  // ============================================================================
+
+  const doc = document;
+  const win = typeof window !== 'undefined' ? window : null;
+
+  // DOM Selectors
+  const $ = (selector, context) => (context || doc).querySelector(selector);
+  const $$ = (selector, context) => Array.from((context || doc).querySelectorAll(selector));
+
+  // Event delegation with null safety
+  const on = (target, event, selectorOrHandler, handler) => {
+    if (!target) return;
+
+    if (typeof selectorOrHandler === 'function') {
+      target.addEventListener(event, selectorOrHandler);
+      return;
+    }
+
+    target.addEventListener(event, (ev) => {
+      let node = ev.target;
+      while (node && node !== target) {
+        if (node.matches && node.matches(selectorOrHandler)) {
+          handler.call(node, ev);
+          break;
+        }
+        node = node.parentNode;
+      }
+    });
+  };
+
+  // Debounce utility
+  const debounce = (fn, delay = 120) => {
+    let timer;
+    return function (...args) {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+  };
+
+  // Console warning (never blocks execution)
+  const warn = (message) => {
+    if (typeof console !== 'undefined' && console.warn) {
+      console.warn('[WU]', message);
+    }
+  };
+
+  // Attribute selector builder
+  const attrSel = (name, suffix = '') => `[data-wu="${name}"]${suffix}`;
+
+  // Get collection items (Webflow compatible)
+  const getItems = (container) => {
+    if (!container) return [];
+    const wfItems = $$('.w-dyn-item', container);
+    return wfItems.length ? wfItems : Array.from(container.children || []);
+  };
+
+  // Bind feature with idempotency check
+  const bindFeature = (featureName, callback, context) => {
+    const elements = $$(attrSel(featureName), context);
+    elements.forEach((node) => {
+      if (!node.dataset) return;
+      if (node.dataset.wuBound === '1') return;
+      node.dataset.wuBound = '1';
+      callback(node, node.dataset);
+    });
+  };
+
+  // ============================================================================
+  // Hash State Management (for Pagination)
+  // ============================================================================
+
+  const getHashParams = () => {
+    if (!win) return {};
+    const hash = (win.location.hash || '').replace(/^#/, '');
+    if (!hash) return {};
+
+    const params = {};
+    hash.split('&').forEach((pair) => {
+      if (!pair) return;
+      const [key, value] = pair.split('=');
+      if (key && key.indexOf('wu:') === 0) {
+        params[key.slice(3)] = value;
+      }
+    });
+    return params;
+  };
+
+  const setHashParams = (updates) => {
+    if (!win) return;
+
+    const current = getHashParams();
+    const merged = { ...current, ...updates };
+
+    const pairs = Object.keys(merged)
+      .filter(key => merged[key])
+      .map(key => `wu:${key}=${merged[key]}`);
+
+    const newHash = pairs.join('&');
+
+    if (win.history && win.history.replaceState) {
+      const url = newHash ? `#${newHash}` : win.location.pathname + win.location.search;
+      win.history.replaceState(null, '', url);
+    } else {
+      win.location.hash = newHash || '';
+    }
+  };
+
+  const hashGet = (id) => {
+    const params = getHashParams();
+    return params[id] ? parseInt(params[id], 10) || 1 : 1;
+  };
+
+  const hashSet = (id, value) => {
+    setHashParams({ [id]: value });
+  };
+
+  // ============================================================================
+  // Module: Pagination
+  // ============================================================================
+
+  const PaginationModule = (() => {
+    const states = {}; // Stores pagination state by ID
+
+    const renderControls = (state) => {
+      if (!state || !state.id) return;
+
+      const controlsElements = $$(attrSel('pg-controls', `[data-wu-for="${state.id}"]`));
+      const isMobile = win && win.innerWidth < 480;
+
+      controlsElements.forEach((ctrl) => {
+        const ds = ctrl.dataset;
+        const prevLabel = ds.wuLabelPrev || 'Prev';
+        const nextLabel = ds.wuLabelNext || 'Next';
+
+        let html = `<button type="button" class="wu-btn" data-wu-page="prev" data-wu-for="${state.id}"${state.page === 1 ? ' disabled' : ''}>${prevLabel}</button>`;
+
+        if (isMobile) {
+          html += `<span class="wu-info">${state.page}/${state.total}</span>`;
+        } else {
+          const pages = generatePageNumbers(state.page, state.total);
+          pages.forEach((num) => {
+            if (num === 0) {
+              html += '<span class="wu-ellipsis">…</span>';
+            } else {
+              const isActive = num === state.page ? ' is-active' : '';
+              html += `<button type="button" class="wu-btn wu-page${isActive}" data-wu-page="${num}" data-wu-for="${state.id}">${num}</button>`;
+            }
+          });
+        }
+
+        html += `<button type="button" class="wu-btn" data-wu-page="next" data-wu-for="${state.id}"${state.page === state.total ? ' disabled' : ''}>${nextLabel}</button>`;
+
+        ctrl.classList.add('wu-controls');
+        ctrl.innerHTML = html;
+      });
+    };
+
+    const generatePageNumbers = (current, total) => {
+      if (total <= 7) {
+        return Array.from({ length: total }, (_, i) => i + 1);
+      }
+
+      const pages = [];
+      const start = Math.max(1, current - 2);
+      const end = Math.min(total, current + 2);
+
+      pages.push(1);
+      if (start > 2) pages.push(0); // Ellipsis
+
+      for (let i = start; i <= end; i++) {
+        if (i !== 1 && i !== total) pages.push(i);
+      }
+
+      if (end < total - 1) pages.push(0); // Ellipsis
+      if (total > 1) pages.push(total);
+
+      return pages;
+    };
+
+    const refreshState = (state) => {
+      if (!state) return;
+
+      const visibleItems = state.items.filter(item => item.dataset.wuHidden !== '1');
+      state.total = Math.max(1, Math.ceil(visibleItems.length / state.per));
+
+      if (state.page > state.total) {
+        state.page = state.total;
+      }
+
+      // Hide all items first
+      state.items.forEach(item => {
+        item.style.display = 'none';
+      });
+
+      // Show items for current page
+      const startIndex = (state.page - 1) * state.per;
+      const endIndex = startIndex + state.per;
+
+      visibleItems.forEach((item, index) => {
+        if (index >= startIndex && index < endIndex) {
+          item.style.display = '';
+        }
+      });
+
+      renderControls(state);
+    };
+
+    const init = () => {
+      bindFeature('paginate', (list, ds) => {
+        const id = list.id;
+        if (!id) {
+          warn('Pagination requires an ID on the list element');
+          return;
+        }
+
+        const perPage = parseInt(ds.wuPer, 10) || 9;
+        const items = getItems(list);
+
+        const state = {
+          id,
+          list,
+          items: items.slice(),
+          per: perPage,
+          total: 1,
+          page: 1,
+          refresh: function () {
+            this.items = getItems(list);
+            refreshState(this);
+          }
+        };
+
+        // Restore page from hash
+        const savedPage = hashGet(id);
+        const maxPage = Math.ceil(items.length / perPage);
+        if (savedPage && savedPage <= maxPage) {
+          state.page = savedPage;
+        }
+
+        states[id] = state;
+        refreshState(state);
+      });
+    };
+
+    const initEvents = () => {
+      on(doc, 'click', attrSel('pg-controls') + ' button', function (ev) {
+        ev.preventDefault();
+        const id = this.dataset.wuFor;
+        const action = this.dataset.wuPage;
+        changePage(id, action);
+      });
+
+      if (win) {
+        win.addEventListener('resize', debounce(() => {
+          Object.keys(states).forEach(id => renderControls(states[id]));
+        }, 120));
+      }
+    };
+
+    const changePage = (id, action) => {
+      const state = states[id];
+      if (!state) return;
+
+      let newPage = state.page;
+
+      if (action === 'prev') {
+        newPage = Math.max(1, state.page - 1);
+      } else if (action === 'next') {
+        newPage = Math.min(state.total, state.page + 1);
+      } else {
+        const num = parseInt(action, 10);
+        if (num) {
+          newPage = Math.max(1, Math.min(state.total, num));
+        }
+      }
+
+      if (newPage === state.page) return;
+
+      state.page = newPage;
+      hashSet(id, newPage);
+      refreshState(state);
+    };
+
+    return { init, initEvents, states, changePage };
+  })();
+
+  // ============================================================================
+  // Module: Breadcrumbs
+  // ============================================================================
+
+  const BreadcrumbsModule = (() => {
+    const init = () => {
+      bindFeature('breadcrumbs', (nav, ds) => {
+        if (!nav.getAttribute('aria-label')) {
+          nav.setAttribute('aria-label', 'Breadcrumb');
+        }
+
+        const homeLabel = ds.wuLabelHome || 'Home';
+        const path = win ? win.location.pathname.replace(/\\+/g, '/') : '/';
+        const segments = path.split('/').filter(Boolean);
+
+        let html = `<ol><li><a href="/">${homeLabel}</a></li>`;
+        let accumulated = '';
+
+        segments.forEach((segment, index) => {
+          accumulated += '/' + segment;
+          const label = decodeURIComponent(segment.replace(/-/g, ' '));
+
+          if (index === segments.length - 1) {
+            html += `<li aria-current="page">${label}</li>`;
+          } else {
+            html += `<li><a href="${accumulated}">${label}</a></li>`;
+          }
+        });
+
+        html += '</ol>';
+        nav.innerHTML = html;
+      });
+    };
+
+    return { init };
+  })();
+
+  // ============================================================================
+  // Module: Filter (AND condition)
+  // ============================================================================
+
+  const FilterModule = (() => {
+    const scopes = {}; // Store filter state by scope selector
+
+    const ensureScope = (scopeSelector) => {
+      if (scopes[scopeSelector]) {
+        return scopes[scopeSelector];
+      }
+
+      const scopeElement = $(scopeSelector);
+      if (!scopeElement) {
+        warn(`Filter scope not found: ${scopeSelector}`);
+        return null;
+      }
+
+      const items = getItems(scopeElement);
+      const pagers = [];
+
+      // Find pagination lists within this scope
+      $$(attrSel('paginate'), scopeElement).forEach((list) => {
+        if (list.id) pagers.push(list.id);
+      });
+
+      const scope = {
+        selector: scopeSelector,
+        element: scopeElement,
+        items,
+        buttons: [],
+        pagers
+      };
+
+      scopes[scopeSelector] = scope;
+      return scope;
+    };
+
+    const applyFilters = (scope) => {
+      if (!scope) return;
+
+      const activeKeys = scope.buttons
+        .filter(btn => btn.dataset.wuActive === '1')
+        .map(btn => btn.dataset.wuKey);
+
+      scope.items.forEach((item) => {
+        const itemTags = (item.dataset.wuTags || '')
+          .split(',')
+          .map(tag => tag.trim())
+          .filter(Boolean);
+
+        let shouldShow = true;
+
+        // AND condition: item must have ALL active filter keys
+        if (activeKeys.length > 0) {
+          for (let i = 0; i < activeKeys.length; i++) {
+            if (itemTags.indexOf(activeKeys[i]) === -1) {
+              shouldShow = false;
+              break;
+            }
+          }
+        }
+
+        if (shouldShow) {
+          item.dataset.wuHidden = '0';
+          item.style.display = '';
+        } else {
+          item.dataset.wuHidden = '1';
+          item.style.display = 'none';
+        }
+      });
+
+      // Refresh pagination if exists
+      scope.pagers.forEach((pagerId) => {
+        const paginationState = PaginationModule.states[pagerId];
+        if (paginationState && typeof paginationState.refresh === 'function') {
+          paginationState.refresh();
+        }
+      });
+    };
+
+    const init = () => {
+      bindFeature('filter', (button, ds) => {
+        const scopeSelector = ds.wuScope;
+        const key = ds.wuKey;
+
+        if (!scopeSelector || !key) {
+          warn('Filter button missing data-wu-scope or data-wu-key');
+          return;
+        }
+
+        const scope = ensureScope(scopeSelector);
+        if (!scope) return;
+
+        scope.buttons.push(button);
+        button.setAttribute('aria-pressed', 'false');
+      });
+    };
+
+    const initEvents = () => {
+      on(doc, 'click', attrSel('filter'), function (ev) {
+        ev.preventDefault();
+
+        const ds = this.dataset;
+        const scope = scopes[ds.wuScope];
+        if (!scope) return;
+
+        const isActive = ds.wuActive === '1';
+
+        if (isActive) {
+          delete ds.wuActive;
+          this.setAttribute('aria-pressed', 'false');
+          this.classList.remove('is-active');
+        } else {
+          ds.wuActive = '1';
+          this.setAttribute('aria-pressed', 'true');
+          this.classList.add('is-active');
+        }
+
+        applyFilters(scope);
+      });
+    };
+
+    return { init, initEvents, scopes };
+  })();
+
+  // ============================================================================
+  // Module: Sort
+  // ============================================================================
+
+  const SortModule = (() => {
+    const init = () => {
+      // Event-only module, no initialization needed
+    };
+
+    const initEvents = () => {
+      on(doc, 'click', attrSel('sort'), function (ev) {
+        ev.preventDefault();
+
+        const ds = this.dataset;
+        const key = ds.wuKey;
+        const order = ds.wuOrder || 'asc';
+        const listId = ds.wuFor;
+
+        if (!key || !listId) {
+          warn('Sort button missing data-wu-key or data-wu-for');
+          return;
+        }
+
+        const list = doc.getElementById(listId);
+        if (!list) {
+          warn(`Sort list not found: ${listId}`);
+          return;
+        }
+
+        const items = getItems(list);
+        const sorted = items.sort((a, b) => {
+          let aVal, bVal;
+
+          if (key === 'date') {
+            aVal = Date.parse(a.dataset.wuDate || '') || 0;
+            bVal = Date.parse(b.dataset.wuDate || '') || 0;
+          } else {
+            aVal = (a.dataset.wuTitle || '').toLowerCase();
+            bVal = (b.dataset.wuTitle || '').toLowerCase();
+          }
+
+          if (aVal < bVal) return order === 'asc' ? -1 : 1;
+          if (aVal > bVal) return order === 'asc' ? 1 : -1;
+          return 0;
+        });
+
+        sorted.forEach(item => list.appendChild(item));
+
+        // Refresh pagination if exists
+        const paginationState = PaginationModule.states[listId];
+        if (paginationState && typeof paginationState.refresh === 'function') {
+          paginationState.items = getItems(list);
+          paginationState.page = 1;
+          paginationState.refresh();
+        }
+      });
+    };
+
+    return { init, initEvents };
+  })();
+
+  // ============================================================================
+  // Module: Load More
+  // ============================================================================
+
+  const LoadMoreModule = (() => {
+    const init = () => {
+      bindFeature('loadmore', (list, ds) => {
+        const id = list.id;
+        if (!id) {
+          warn('LoadMore requires an ID on the list element');
+          return;
+        }
+
+        const initial = parseInt(ds.wuInitial, 10) || 9;
+        const step = parseInt(ds.wuStep, 10) || initial;
+        const items = getItems(list);
+
+        items.forEach((item, index) => {
+          item.style.display = index < initial ? '' : 'none';
+        });
+
+        ds.wuVisible = initial;
+        ds.wuStep = step;
+
+        const button = $(`[data-wu="loadmore-btn"][data-wu-for="${id}"]`);
+        if (button && initial >= items.length) {
+          button.disabled = true;
+        }
+      });
+    };
+
+    const initEvents = () => {
+      on(doc, 'click', attrSel('loadmore-btn'), function (ev) {
+        ev.preventDefault();
+
+        const ds = this.dataset;
+        const listId = ds.wuFor;
+
+        const list = doc.getElementById(listId);
+        if (!list) return;
+
+        const listDs = list.dataset;
+        const visible = parseInt(listDs.wuVisible, 10) || 0;
+        const step = parseInt(listDs.wuStep, 10) || 0;
+        const items = getItems(list);
+        const nextVisible = visible + step;
+
+        items.forEach((item, index) => {
+          if (index < nextVisible) {
+            item.style.display = '';
+          }
+        });
+
+        listDs.wuVisible = nextVisible;
+
+        if (nextVisible >= items.length) {
+          this.disabled = true;
+        }
+      });
+    };
+
+    return { init, initEvents };
+  })();
+
+  // ============================================================================
+  // Module: Table of Contents
+  // ============================================================================
+
+  const TOCModule = (() => {
+    let headingCounter = 0;
+
+    const init = () => {
+      bindFeature('toc', (tocContainer, ds) => {
+        const targetSelector = ds.wuFor;
+        const target = $(targetSelector);
+
+        if (!target) {
+          warn(`TOC target not found: ${targetSelector}`);
+          return;
+        }
+
+        const headingSelector = ds.wuHeadings || 'h2,h3';
+        const headings = $$(headingSelector, target);
+
+        if (!headings.length) return;
+
+        const list = doc.createElement('ul');
+
+        headings.forEach((heading) => {
+          if (!heading.id) {
+            heading.id = `wu-heading-${++headingCounter}`;
+          }
+
+          const li = doc.createElement('li');
+          if (heading.tagName.toLowerCase() === 'h3') {
+            li.className = 'wu-depth-2';
+          }
+
+          const link = doc.createElement('a');
+          link.href = `#${heading.id}`;
+          link.textContent = heading.textContent.trim();
+
+          li.appendChild(link);
+          list.appendChild(li);
+        });
+
+        tocContainer.innerHTML = '';
+        tocContainer.appendChild(list);
+      });
+    };
+
+    return { init };
+  })();
+
+  // ============================================================================
+  // Module: External Links
+  // ============================================================================
+
+  const ExternalLinksModule = (() => {
+    const init = () => {
+      bindFeature('ext-links', (scope) => {
+        const currentHost = win ? win.location.hostname : '';
+
+        scope.querySelectorAll('a[href]').forEach((link) => {
+          const href = link.getAttribute('href');
+          if (!href) return;
+          if (href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0) return;
+
+          try {
+            const url = new URL(href, win ? win.location.href : href);
+
+            if (url.hostname !== currentHost) {
+              link.setAttribute('target', '_blank');
+
+              const rel = (link.getAttribute('rel') || '').split(' ').filter(Boolean);
+              if (rel.indexOf('noopener') === -1) {
+                rel.push('noopener');
+              }
+              link.setAttribute('rel', rel.join(' '));
+            }
+          } catch (e) {
+            // Invalid URL, skip
+          }
+        });
+      });
+    };
+
+    return { init };
+  })();
+
+  // ============================================================================
+  // Module: Form Guard (prevent multiple submissions)
+  // ============================================================================
+
+  const FormGuardModule = (() => {
+    const init = () => {
+      bindFeature('form-guard', (node, ds) => {
+        const form = node.closest('form');
+        if (!form) {
+          warn('Form guard element must be inside a <form>');
+          return;
+        }
+
+        const timeout = parseInt(ds.wuTimeout, 10) || 10000;
+        const sendingLabel = ds.wuLabelSending || 'Sending...';
+
+        // Only bind once per form
+        if (form.dataset.wuGuard === '1') return;
+        form.dataset.wuGuard = '1';
+
+        on(form, 'submit', () => {
+          const submitButton = form.querySelector('[type="submit"]');
+          if (!submitButton || submitButton.disabled) return;
+
+          submitButton.disabled = true;
+
+          const originalLabel = submitButton.dataset.wuOriginalLabel || submitButton.textContent;
+          if (!submitButton.dataset.wuOriginalLabel) {
+            submitButton.dataset.wuOriginalLabel = originalLabel;
+          }
+
+          submitButton.textContent = sendingLabel;
+
+          setTimeout(() => {
+            submitButton.disabled = false;
+            submitButton.textContent = submitButton.dataset.wuOriginalLabel || originalLabel;
+          }, timeout);
+        });
+      });
+    };
+
+    return { init };
+  })();
+
+  // ============================================================================
+  // Module: UTM Parameters
+  // ============================================================================
+
+  const UTMModule = (() => {
+    const parseUTM = () => {
+      if (!win) return {};
+
+      const queryString = (win.location.search || '').replace(/^\?/, '');
+      if (!queryString) return {};
+
+      const params = {};
+      queryString.split('&').forEach((pair) => {
+        if (!pair) return;
+        const [key, value] = pair.split('=');
+        if (key && key.indexOf('utm_') === 0) {
+          params[key] = decodeURIComponent(value || '');
+        }
+      });
+
+      return params;
+    };
+
+    const init = () => {
+      const utmParams = parseUTM();
+      const keys = Object.keys(utmParams);
+
+      if (!keys.length) return;
+
+      bindFeature('utm', (scope) => {
+        keys.forEach((paramName) => {
+          const input = scope.querySelector(`[name="${paramName}"]`);
+          if (input && !input.value) {
+            input.value = utmParams[paramName];
+          }
+        });
+      });
+    };
+
+    return { init };
+  })();
+
+  // ============================================================================
+  // Module: Video Autoplay (Intersection Observer)
+  // ============================================================================
+
+  const VideoModule = (() => {
+    let observer = null;
+
+    const getObserver = () => {
+      if (observer || typeof IntersectionObserver === 'undefined') {
+        return observer;
+      }
+
+      observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          const video = entry.target;
+          try {
+            if (entry.isIntersecting) {
+              if (video.play) video.play();
+            } else {
+              if (video.pause) video.pause();
+            }
+          } catch (e) {
+            // Ignore autoplay errors
+          }
+        });
+      }, { threshold: 0.25 });
+
+      return observer;
+    };
+
+    const init = () => {
+      if (typeof IntersectionObserver === 'undefined') return;
+
+      const obs = getObserver();
+      if (!obs) return;
+
+      bindFeature('video', (scope) => {
+        scope.querySelectorAll('video[data-wu-auto]').forEach((video) => {
+          obs.observe(video);
+        });
+      });
+    };
+
+    return { init };
+  })();
+
+  // ============================================================================
+  // Module: Scrollspy
+  // ============================================================================
+
+  const ScrollspyModule = (() => {
+    let observer = null;
+    let navLinks = [];
+
+    const getObserver = () => {
+      if (observer || typeof IntersectionObserver === 'undefined') {
+        return observer;
+      }
+
+      observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+
+          const sectionId = entry.target.dataset.wuSpy;
+          if (!sectionId) return;
+
+          navLinks.forEach((link) => {
+            if (link.dataset.wuLink === sectionId) {
+              link.classList.add('is-active');
+            } else {
+              link.classList.remove('is-active');
+            }
+          });
+        });
+      }, { threshold: 0.5 });
+
+      return observer;
+    };
+
+    const init = () => {
+      if (typeof IntersectionObserver === 'undefined') return;
+
+      navLinks = $$('[data-wu="scrollspy"] [data-wu-link]');
+      if (!navLinks.length) return;
+
+      const obs = getObserver();
+      if (!obs) return;
+
+      $$('[data-wu-spy]').forEach((section) => {
+        if (section.dataset.wuBound === '1') return;
+        section.dataset.wuBound = '1';
+        obs.observe(section);
+      });
+    };
+
+    return { init };
+  })();
+
+  // ============================================================================
+  // Module: Text Trim (Read More)
+  // ============================================================================
+
+  const TrimModule = (() => {
+    let trimCounter = 0;
+
+    const init = () => {
+      $$('[data-wu="trim"] .js-trim').forEach((node) => {
+        if (!node.dataset) return;
+        if (node.dataset.wuBound === '1') return;
+
+        const maxLength = parseInt(node.dataset.wuMax, 10);
+        if (!maxLength || maxLength < 1) return;
+
+        const moreLabel = node.dataset.wuLabelMore || '続きを読む';
+        const fullText = node.textContent.trim();
+
+        if (fullText.length <= maxLength) return;
+
+        let shortText = fullText.slice(0, maxLength);
+        const lastSpace = shortText.lastIndexOf(' ');
+        if (lastSpace > maxLength - 20) {
+          shortText = shortText.slice(0, lastSpace);
+        }
+
+        node.textContent = shortText + '…';
+
+        const trimId = `wu-trim-${++trimCounter}`;
+        node.dataset.wuBound = '1';
+        node.dataset.wuTrimId = trimId;
+        node.dataset.wuFull = fullText;
+
+        const button = doc.createElement('button');
+        button.type = 'button';
+        button.className = 'wu-btn';
+        button.dataset.wuTrimTrigger = trimId;
+        button.textContent = moreLabel;
+
+        if (node.parentNode) {
+          node.parentNode.insertBefore(button, node.nextSibling);
+        }
+      });
+    };
+
+    const initEvents = () => {
+      on(doc, 'click', '[data-wu-trim-trigger]', function (ev) {
+        ev.preventDefault();
+
+        const trimId = this.dataset.wuTrimTrigger;
+        const target = $(`[data-wu-trim-id="${trimId}"]`);
+
+        if (!target) return;
+
+        target.textContent = target.dataset.wuFull || target.textContent;
+        delete target.dataset.wuFull;
+
+        if (this.parentNode) {
+          this.parentNode.removeChild(this);
+        }
+      });
+    };
+
+    return { init, initEvents };
+  })();
+
+  // ============================================================================
+  // Brand Color CSS Variable Support
+  // ============================================================================
+
+  const BrandColorModule = (() => {
+    const updateCSSVariable = (color) => {
+      if (!doc.documentElement) return;
+      doc.documentElement.style.setProperty('--wu-brand', color);
+    };
+
+    const init = () => {
+      // Check for brand color in meta tag or data attribute
+      const metaColor = $('meta[name="wu-brand-color"]');
+      if (metaColor) {
+        const color = metaColor.getAttribute('content');
+        if (color) updateCSSVariable(color);
+      }
+
+      // Watch for brand color input changes
+      const brandInput = $('#brand-hex');
+      if (brandInput) {
+        brandInput.addEventListener('input', (e) => {
+          const color = e.target.value;
+          if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+            updateCSSVariable(color);
+          }
+        });
+      }
+    };
+
+    return { init, updateCSSVariable };
+  })();
+
+  // ============================================================================
+  // Public API: WU.initAll()
+  // ============================================================================
+
+  const initAll = () => {
+    // Initialize all feature modules
+    PaginationModule.init();
+    BreadcrumbsModule.init();
+    FilterModule.init();
+    SortModule.init();
+    LoadMoreModule.init();
+    TOCModule.init();
+    ExternalLinksModule.init();
+    FormGuardModule.init();
+    UTMModule.init();
+    VideoModule.init();
+    ScrollspyModule.init();
+    TrimModule.init();
+    BrandColorModule.init();
+
+    // Initialize event handlers
+    PaginationModule.initEvents();
+    FilterModule.initEvents();
+    SortModule.initEvents();
+    LoadMoreModule.initEvents();
+    TrimModule.initEvents();
+  };
+
+  // Auto-initialize when DOM is ready
+  if (doc.readyState === 'loading') {
+    doc.addEventListener('DOMContentLoaded', initAll);
+  } else {
+    // DOM already loaded
+    setTimeout(initAll, 0);
+  }
+
+  // ============================================================================
+  // Export Public API
+  // ============================================================================
+
+  return {
+    init: initAll,
+    pagination: PaginationModule.states,
+    brandColor: BrandColorModule.updateCSSVariable,
+    utils: {
+      $,
+      $$,
+      on,
+      debounce,
+      hashGet,
+      hashSet
+    }
+  };
+});

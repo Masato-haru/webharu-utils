@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="wu-brand-color" content="#005AC8">
+  <title>WebHaru Utils v1 - Refactored Test</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1 { border-bottom: 3px solid var(--wu-brand, #005AC8); padding-bottom: 10px; }
+    h2 { color: var(--wu-brand, #005AC8); margin-top: 40px; }
+
+    /* Brand Color CSS Variable */
+    :root {
+      --wu-brand: #005AC8;
+    }
+
+    /* WU Button Styles */
+    .wu-btn {
+      padding: 10px 16px;
+      border: 2px solid var(--wu-brand);
+      background: white;
+      color: var(--wu-brand);
+      cursor: pointer;
+      font-size: 14px;
+      border-radius: 4px;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    .wu-btn:hover:not(:disabled) {
+      background: var(--wu-brand);
+      color: white;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 90, 200, 0.2);
+    }
+    .wu-btn.is-active,
+    .wu-btn.wu-page.is-active {
+      background: var(--wu-brand);
+      color: white;
+    }
+    .wu-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* Pagination Controls */
+    .wu-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .wu-ellipsis {
+      padding: 0 8px;
+      color: #999;
+    }
+    .wu-info {
+      padding: 0 12px;
+      font-weight: 600;
+      color: var(--wu-brand);
+    }
+
+    /* Test Layout */
+    .test-section {
+      background: #f5f5f5;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    .item-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 16px;
+      margin: 20px 0;
+    }
+    .item {
+      background: white;
+      padding: 16px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+    }
+    .item-title {
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .item-tags {
+      font-size: 12px;
+      color: #666;
+      margin-top: 8px;
+    }
+    .filter-buttons {
+      display: flex;
+      gap: 10px;
+      margin: 15px 0;
+      flex-wrap: wrap;
+    }
+
+    /* TOC Styles */
+    [data-wu="toc"] ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    [data-wu="toc"] li {
+      margin: 8px 0;
+    }
+    [data-wu="toc"] .wu-depth-2 {
+      padding-left: 20px;
+      font-size: 14px;
+    }
+    [data-wu="toc"] a {
+      color: var(--wu-brand);
+      text-decoration: none;
+    }
+    [data-wu="toc"] a:hover {
+      text-decoration: underline;
+    }
+
+    /* Scrollspy */
+    [data-wu="scrollspy"] a {
+      display: block;
+      padding: 8px 12px;
+      color: #333;
+      text-decoration: none;
+      border-left: 3px solid transparent;
+    }
+    [data-wu="scrollspy"] a.is-active {
+      border-left-color: var(--wu-brand);
+      background: #f0f0f0;
+      font-weight: bold;
+    }
+
+    /* Breadcrumbs */
+    [data-wu="breadcrumbs"] ol {
+      display: flex;
+      list-style: none;
+      padding: 0;
+      gap: 8px;
+    }
+    [data-wu="breadcrumbs"] li::after {
+      content: "›";
+      margin-left: 8px;
+      color: #999;
+    }
+    [data-wu="breadcrumbs"] li:last-child::after {
+      content: "";
+    }
+    [data-wu="breadcrumbs"] a {
+      color: var(--wu-brand);
+      text-decoration: none;
+    }
+
+    /* Brand Color Control */
+    .brand-control {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      z-index: 1000;
+    }
+    .brand-control label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .brand-control input {
+      padding: 8px;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Brand Color Control (demonstrates real-time updates) -->
+  <div class="brand-control">
+    <label for="brand-hex">Brand Color:</label>
+    <input type="color" id="brand-hex" value="#005AC8">
+    <div style="font-size: 12px; margin-top: 5px; color: #666;">
+      Change to see live updates
+    </div>
+  </div>
+
+  <h1>WebHaru Utils v1 - Refactored Test Page</h1>
+
+  <!-- Breadcrumbs -->
+  <nav data-wu="breadcrumbs" data-wu-label-home="Home"></nav>
+
+  <!-- Test Section 1: Pagination + Filter -->
+  <div class="test-section">
+    <h2 id="pagination-filter">Test 1: Pagination + Filter (AND Condition)</h2>
+
+    <div class="filter-buttons">
+      <button data-wu="filter" data-wu-key="tech" data-wu-scope="#news-list">Tech</button>
+      <button data-wu="filter" data-wu-key="design" data-wu-scope="#news-list">Design</button>
+      <button data-wu="filter" data-wu-key="featured" data-wu-scope="#news-list">Featured</button>
+    </div>
+
+    <div id="news-list" class="item-grid" data-wu="paginate" data-wu-per="6">
+      <div class="item" data-wu-tags="tech,featured" data-wu-date="2025-01-20" data-wu-title="AI Revolution">
+        <div class="item-title">AI Revolution</div>
+        <p>Latest developments in artificial intelligence.</p>
+        <div class="item-tags">Tags: tech, featured</div>
+      </div>
+      <div class="item" data-wu-tags="design" data-wu-date="2025-01-19" data-wu-title="Design Trends 2025">
+        <div class="item-title">Design Trends 2025</div>
+        <p>Top design trends for the new year.</p>
+        <div class="item-tags">Tags: design</div>
+      </div>
+      <div class="item" data-wu-tags="tech,design" data-wu-date="2025-01-18" data-wu-title="UI/UX Best Practices">
+        <div class="item-title">UI/UX Best Practices</div>
+        <p>Creating better user experiences.</p>
+        <div class="item-tags">Tags: tech, design</div>
+      </div>
+      <div class="item" data-wu-tags="tech" data-wu-date="2025-01-17" data-wu-title="Cloud Computing">
+        <div class="item-title">Cloud Computing</div>
+        <p>Understanding cloud infrastructure.</p>
+        <div class="item-tags">Tags: tech</div>
+      </div>
+      <div class="item" data-wu-tags="design,featured" data-wu-date="2025-01-16" data-wu-title="Color Theory">
+        <div class="item-title">Color Theory</div>
+        <p>Mastering color in design.</p>
+        <div class="item-tags">Tags: design, featured</div>
+      </div>
+      <div class="item" data-wu-tags="tech,featured" data-wu-date="2025-01-15" data-wu-title="Blockchain Basics">
+        <div class="item-title">Blockchain Basics</div>
+        <p>Introduction to blockchain technology.</p>
+        <div class="item-tags">Tags: tech, featured</div>
+      </div>
+      <div class="item" data-wu-tags="design" data-wu-date="2025-01-14" data-wu-title="Typography Guide">
+        <div class="item-title">Typography Guide</div>
+        <p>Choosing the right fonts.</p>
+        <div class="item-tags">Tags: design</div>
+      </div>
+      <div class="item" data-wu-tags="tech,design,featured" data-wu-date="2025-01-13" data-wu-title="Responsive Design">
+        <div class="item-title">Responsive Design</div>
+        <p>Building for all screen sizes.</p>
+        <div class="item-tags">Tags: tech, design, featured</div>
+      </div>
+      <div class="item" data-wu-tags="tech" data-wu-date="2025-01-12" data-wu-title="Cybersecurity 101">
+        <div class="item-title">Cybersecurity 101</div>
+        <p>Protecting your digital assets.</p>
+        <div class="item-tags">Tags: tech</div>
+      </div>
+      <div class="item" data-wu-tags="design,featured" data-wu-date="2025-01-11" data-wu-title="Minimalist Design">
+        <div class="item-title">Minimalist Design</div>
+        <p>Less is more in modern design.</p>
+        <div class="item-tags">Tags: design, featured</div>
+      </div>
+    </div>
+
+    <div data-wu="pg-controls"
+         data-wu-for="news-list"
+         data-wu-label-prev="← Previous"
+         data-wu-label-next="Next →"></div>
+
+    <p><strong>Instructions:</strong></p>
+    <ul>
+      <li>Click filter buttons to filter items (AND condition - must match ALL selected filters)</li>
+      <li>Pagination automatically updates when filters change</li>
+      <li>Page state is saved in URL hash (#wu:news-list=2)</li>
+      <li>Refresh page to see state persistence</li>
+    </ul>
+  </div>
+
+  <!-- Test Section 2: Sort -->
+  <div class="test-section">
+    <h2 id="sort">Test 2: Sort</h2>
+
+    <div class="filter-buttons">
+      <button data-wu="sort" data-wu-key="date" data-wu-order="desc" data-wu-for="news-list">Newest First</button>
+      <button data-wu="sort" data-wu-key="date" data-wu-order="asc" data-wu-for="news-list">Oldest First</button>
+      <button data-wu="sort" data-wu-key="title" data-wu-order="asc" data-wu-for="news-list">A → Z</button>
+      <button data-wu="sort" data-wu-key="title" data-wu-order="desc" data-wu-for="news-list">Z → A</button>
+    </div>
+
+    <p><strong>Instructions:</strong> Click sort buttons above to reorder the news list. Pagination resets to page 1 after sorting.</p>
+  </div>
+
+  <!-- Test Section 3: Load More -->
+  <div class="test-section">
+    <h2 id="loadmore">Test 3: Load More</h2>
+
+    <div id="blog-posts" class="item-grid" data-wu="loadmore" data-wu-initial="3" data-wu-step="2">
+      <div class="item"><div class="item-title">Post 1</div><p>Initial visible post</p></div>
+      <div class="item"><div class="item-title">Post 2</div><p>Initial visible post</p></div>
+      <div class="item"><div class="item-title">Post 3</div><p>Initial visible post</p></div>
+      <div class="item"><div class="item-title">Post 4</div><p>Hidden initially</p></div>
+      <div class="item"><div class="item-title">Post 5</div><p>Hidden initially</p></div>
+      <div class="item"><div class="item-title">Post 6</div><p>Hidden initially</p></div>
+      <div class="item"><div class="item-title">Post 7</div><p>Hidden initially</p></div>
+    </div>
+
+    <button class="wu-btn" data-wu="loadmore-btn" data-wu-for="blog-posts">Load More Posts</button>
+
+    <p><strong>Instructions:</strong> Click "Load More" to show 2 more posts each time. Button disables when all posts are shown.</p>
+  </div>
+
+  <!-- Test Section 4: Table of Contents -->
+  <div class="test-section">
+    <h2 id="toc">Test 4: Table of Contents</h2>
+
+    <div style="display: grid; grid-template-columns: 200px 1fr; gap: 20px;">
+      <div data-wu="toc" data-wu-for="#article" data-wu-headings="h2,h3"></div>
+
+      <article id="article">
+        <h2>Introduction</h2>
+        <p>This is the introduction section with some content.</p>
+
+        <h2>Main Topic</h2>
+        <p>Main topic content goes here.</p>
+
+        <h3>Subtopic A</h3>
+        <p>Details about subtopic A.</p>
+
+        <h3>Subtopic B</h3>
+        <p>Details about subtopic B.</p>
+
+        <h2>Conclusion</h2>
+        <p>Concluding thoughts and summary.</p>
+      </article>
+    </div>
+
+    <p><strong>Instructions:</strong> Click TOC links to jump to sections. IDs are auto-generated if missing.</p>
+  </div>
+
+  <!-- Test Section 5: External Links -->
+  <div class="test-section">
+    <h2 id="ext-links">Test 5: External Links</h2>
+
+    <div data-wu="ext-links">
+      <p>
+        <a href="https://google.com">External: Google</a> (will open in new tab)<br>
+        <a href="#toc">Internal: TOC section</a> (same tab)<br>
+        <a href="mailto:test@example.com">Email link</a> (same tab)<br>
+        <a href="https://github.com">External: GitHub</a> (will open in new tab)
+      </p>
+    </div>
+
+    <p><strong>Instructions:</strong> Inspect links - external ones have target="_blank" and rel="noopener".</p>
+  </div>
+
+  <!-- Test Section 6: Form Guard -->
+  <div class="test-section">
+    <h2 id="form-guard">Test 6: Form Guard</h2>
+
+    <form onsubmit="event.preventDefault(); alert('Form submitted (prevented for demo)');">
+      <div data-wu="form-guard" data-wu-timeout="5000" data-wu-label-sending="Submitting..."></div>
+
+      <input type="email" placeholder="Your email" style="padding: 10px; width: 100%; margin-bottom: 10px;">
+      <button type="submit" class="wu-btn">Submit Form</button>
+    </form>
+
+    <p><strong>Instructions:</strong> Click submit - button disables for 5 seconds to prevent double submission.</p>
+  </div>
+
+  <!-- Test Section 7: Text Trim -->
+  <div class="test-section">
+    <h2 id="trim">Test 7: Text Trim</h2>
+
+    <div data-wu="trim">
+      <p class="js-trim" data-wu-max="100" data-wu-label-more="Read full text">
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+      </p>
+    </div>
+
+    <p><strong>Instructions:</strong> Text is truncated at 100 characters. Click "Read full text" to expand.</p>
+  </div>
+
+  <!-- Test Section 8: Brand Color Updates -->
+  <div class="test-section">
+    <h2 id="brand-color">Test 8: Real-time Brand Color</h2>
+
+    <p>Use the color picker in the top-right corner to change the brand color in real-time!</p>
+
+    <div style="display: flex; gap: 10px; margin-top: 15px;">
+      <button class="wu-btn">Normal Button</button>
+      <button class="wu-btn is-active">Active Button</button>
+      <button class="wu-btn" disabled>Disabled Button</button>
+    </div>
+
+    <p style="margin-top: 15px;">
+      Current brand color: <strong id="current-color">#005AC8</strong>
+    </p>
+
+    <p><strong>Instructions:</strong> Change the color picker above - all buttons and active elements update instantly via <code>--wu-brand</code> CSS variable.</p>
+  </div>
+
+  <!-- Footer -->
+  <footer style="margin-top: 60px; padding-top: 20px; border-top: 2px solid #ddd; text-align: center; color: #666;">
+    <p>WebHaru Utils v1 - Refactored | MIT License</p>
+    <p><a href="REFACTORING_GUIDE.md" style="color: var(--wu-brand);">View Refactoring Guide</a></p>
+  </footer>
+
+  <!-- Load the refactored library -->
+  <script src="assets/webharu-utils.v1.js"></script>
+
+  <!-- Real-time brand color updater -->
+  <script>
+    // Live brand color updates
+    const colorInput = document.getElementById('brand-hex');
+    const colorDisplay = document.getElementById('current-color');
+
+    colorInput.addEventListener('input', (e) => {
+      const color = e.target.value;
+      document.documentElement.style.setProperty('--wu-brand', color);
+      colorDisplay.textContent = color.toUpperCase();
+
+      // Also update via WU API if available
+      if (window.WU && window.WU.brandColor) {
+        window.WU.brandColor(color);
+      }
+    });
+
+    // Console info
+    console.log('WebHaru Utils loaded:', window.WU);
+    console.log('Available methods:', Object.keys(window.WU));
+    console.log('Pagination states:', window.WU.pagination);
+  </script>
+
+</body>
+</html>

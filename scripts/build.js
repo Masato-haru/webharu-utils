@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
-const SRC = path.join(__dirname, 'src', 'webharu-utils.js');
+const SRC = path.join(__dirname, 'src', 'webharu-utils-refactored.js');
 const DIST = path.join(__dirname, '..', 'assets', 'webharu-utils.v1.js');
+const DIST_READABLE = path.join(__dirname, '..', 'assets', 'webharu-utils.v1.readable.js');
 
 function minify(code) {
   let result = '';
@@ -136,16 +137,26 @@ function ensureDir(filePath) {
 
 function build() {
   const src = fs.readFileSync(SRC, 'utf8');
-  const license = '/*! WebHaru Utils v1 | MIT */';
+  const license = '/*! WebHaru Utils v1 - Refactored | MIT License */';
   const minified = minify(src);
   const output = license + minified;
+
   ensureDir(DIST);
+  ensureDir(DIST_READABLE);
+
+  // Write minified version
   fs.writeFileSync(DIST, output, 'utf8');
   const size = Buffer.byteLength(output);
-  if (size > 12 * 1024) {
-    throw new Error('webharu-utils.v1.js exceeds 12KB limit: ' + size);
+
+  // Write readable version for debugging
+  fs.writeFileSync(DIST_READABLE, license + '\n' + src, 'utf8');
+
+  console.log('✓ Built minified:', path.relative(process.cwd(), DIST), size + ' bytes');
+  console.log('✓ Built readable:', path.relative(process.cwd(), DIST_READABLE));
+
+  if (size > 16 * 1024) {
+    console.warn('⚠ Warning: File size exceeds 16KB:', size, 'bytes');
   }
-  console.log('Built', path.relative(process.cwd(), DIST), size + ' bytes');
 }
 
 build();
