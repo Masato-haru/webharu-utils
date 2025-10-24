@@ -1,0 +1,126 @@
+{
+  "paginate": {
+    "label": "ページネーション",
+    "description": "Collection List のアイテムをページ分割します。",
+    "order": 1,
+    "tags": ["list", "navigation"],
+    "inputs": [
+      { "name": "listId", "type": "text", "label": "リストID", "required": true, "pattern": "^[A-Za-z0-9-_]+$" },
+      { "name": "per", "type": "number", "label": "件数/ページ", "required": true, "min": 1, "max": 9999, "default": 9 },
+      { "name": "labelPrev", "type": "text", "label": "Prevラベル", "required": false, "default": "Prev" },
+      { "name": "labelNext", "type": "text", "label": "Nextラベル", "required": false, "default": "Next" }
+    ],
+    "attrsSampleFile": "sample-pagination.html"
+  },
+  "breadcrumbs": {
+    "label": "パンくず",
+    "description": "現在ページまでの階層を自動生成します。",
+    "order": 2,
+    "tags": ["navigation"],
+    "inputs": [
+      { "name": "homeLabel", "type": "text", "label": "Homeラベル", "required": false, "default": "Home" }
+    ],
+    "attrsSampleFile": "sample-breadcrumbs.html"
+  },
+  "filter": {
+    "label": "フィルター",
+    "description": "AND条件で Collection の絞り込みを行います。",
+    "order": 3,
+    "tags": ["list", "toggle"],
+    "inputs": [
+      { "name": "scope", "type": "text", "label": "スコープセレクタ", "required": true, "pattern": "^[A-Za-z0-9-_.#]+$", "placeholder": "#news-list" },
+      { "name": "keys", "type": "text", "label": "タグキー (カンマ区切り)", "required": true, "placeholder": "news,seo" }
+    ],
+    "attrsSampleFile": "sample-filter.html"
+  },
+  "sort": {
+    "label": "ソート",
+    "description": "Collection の並び順を変更します。",
+    "order": 4,
+    "tags": ["list", "toggle"],
+    "inputs": [
+      { "name": "listId", "type": "text", "label": "リストID", "required": true, "pattern": "^[A-Za-z0-9-_]+$" },
+      { "name": "buttonId", "type": "text", "label": "ボタンラッパーID", "required": false, "pattern": "^[A-Za-z0-9-_]+$" }
+    ],
+    "attrsSampleFile": "sample-sort.html"
+  },
+  "loadmore": {
+    "label": "もっと読む",
+    "description": "一定数ずつアイテムを追加読み込みします。",
+    "order": 5,
+    "tags": ["list"],
+    "inputs": [
+      { "name": "listId", "type": "text", "label": "リストID", "required": true, "pattern": "^[A-Za-z0-9-_]+$" },
+      { "name": "initial", "type": "number", "label": "初期表示数", "required": true, "min": 1, "max": 9999, "default": 9 },
+      { "name": "step", "type": "number", "label": "追加表示数", "required": true, "min": 1, "max": 9999, "default": 9 }
+    ],
+    "attrsSampleFile": "sample-loadmore.html"
+  },
+  "toc": {
+    "label": "目次",
+    "description": "本文から目次リンクを生成します。",
+    "order": 6,
+    "tags": ["article"],
+    "inputs": [
+      { "name": "forSel", "type": "text", "label": "対象セレクタ", "required": true, "pattern": "^[A-Za-z0-9-_.#]+$", "default": "#post-body" },
+      { "name": "headings", "type": "text", "label": "対象見出し", "required": true, "pattern": "^[A-Za-z0-9,_-]+$", "default": "h2,h3" }
+    ],
+    "attrsSampleFile": "sample-toc.html"
+  },
+  "extLinks": {
+    "label": "外部リンク警告",
+    "description": "外部リンクに target/rel を付与します。",
+    "order": 7,
+    "tags": ["link"],
+    "inputs": [],
+    "attrsSampleFile": "sample-ext-links.html"
+  },
+  "formGuard": {
+    "label": "フォームガード",
+    "description": "多重送信を防ぎます。",
+    "order": 8,
+    "tags": ["form"],
+    "inputs": [
+      { "name": "timeout", "type": "number", "label": "解除ミリ秒", "required": true, "min": 1, "max": 9999, "default": 10000 },
+      { "name": "sending", "type": "text", "label": "送信中ラベル", "required": false, "default": "Sending..." }
+    ],
+    "attrsSampleFile": "sample-form-guard.html"
+  },
+  "utm": {
+    "label": "UTM取り込み",
+    "description": "URLの utm_* 値をフォームに転記します。",
+    "order": 9,
+    "tags": ["form", "marketing"],
+    "inputs": [],
+    "attrsSampleFile": "sample-utm.html"
+  },
+  "video": {
+    "label": "ビデオ自動再生",
+    "description": "可視範囲で video を再生・停止します。",
+    "order": 10,
+    "tags": ["media"],
+    "inputs": [],
+    "attrsSampleFile": "sample-video.html"
+  },
+  "scrollspy": {
+    "label": "スクロールスパイ",
+    "description": "セクションに応じてナビをハイライトします。",
+    "order": 11,
+    "tags": ["navigation"],
+    "inputs": [
+      { "name": "navId", "type": "text", "label": "ナビゲーションID", "required": false, "pattern": "^[A-Za-z0-9-_]+$" }
+    ],
+    "attrsSampleFile": "sample-scrollspy.html"
+  },
+  "trim": {
+    "label": "テキスト省略",
+    "description": "指定文字数で本文をトリムします。",
+    "order": 12,
+    "tags": ["text"],
+    "inputs": [
+      { "name": "max", "type": "number", "label": "最大文字数", "required": true, "min": 1, "max": 9999, "default": 120 },
+      { "name": "moreLabel", "type": "text", "label": "続きを読むラベル", "required": false, "default": "続きを読む" }
+    ],
+    "attrsSampleFile": "sample-trim.html"
+  }
+}

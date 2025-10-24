@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WebHaru Utils Snippet Builder</title>
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <header id="header">
+      <div class="logo">WebHaru Utils <span class="tag">v1</span></div>
+      <nav>
+        <a href="../docs/README-ja.md" target="_blank" rel="noopener">Docs</a>
+      </nav>
+    </header>
+    <main id="layout">
+      <aside id="catalog">
+        <div class="catalog-head">
+          <label for="search">検索</label>
+          <input id="search" type="search" placeholder="機能名・タグ" autocomplete="off" />
+        </div>
+        <div class="tags" id="tag-filters"></div>
+        <div id="feature-list"></div>
+      </aside>
+      <section id="settings">
+        <div id="settings-inner">
+          <h2 id="settings-title">設定</h2>
+          <div id="settings-empty">左の機能一覧から選択してください。</div>
+          <div id="forms"></div>
+        </div>
+      </section>
+      <section id="output">
+        <div class="tabs" role="tablist">
+          <button type="button" class="tab is-active" data-tab="inline" role="tab" aria-controls="panel-inline">Inline</button>
+          <button type="button" class="tab" data-tab="external" role="tab" aria-controls="panel-external">External</button>
+          <button type="button" class="tab" data-tab="attrs" role="tab" aria-controls="panel-attrs">Attrs</button>
+          <button type="button" class="tab" data-tab="llms" role="tab" aria-controls="panel-llms">LLMs</button>
+        </div>
+        <div id="panels">
+          <div class="panel is-active" id="panel-inline" data-panel="inline" role="tabpanel">
+            <pre><code id="out-inline"></code></pre>
+          </div>
+          <div class="panel" id="panel-external" data-panel="external" role="tabpanel">
+            <pre><code id="out-external"></code></pre>
+          </div>
+          <div class="panel" id="panel-attrs" data-panel="attrs" role="tabpanel">
+            <div id="attr-table"></div>
+            <pre><code id="out-attrs"></code></pre>
+          </div>
+          <div class="panel" id="panel-llms" data-panel="llms" role="tabpanel">
+            <pre><code id="out-llms"></code></pre>
+          </div>
+        </div>
+        <div class="output-actions">
+          <button type="button" id="btn-copy" disabled>コピー</button>
+          <button type="button" id="btn-zip" disabled>ZIP</button>
+        </div>
+        <div id="howto"></div>
+      </section>
+    </main>
+    <div id="toast" role="status" aria-live="polite" hidden></div>
+    <script src="app.js"></script>
+  </body>
+</html>

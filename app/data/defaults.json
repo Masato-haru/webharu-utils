@@ -1,0 +1,8 @@
+{
+  "brandHex": "#005AC8",
+  "paginate": { "per": 9 },
+  "loadmore": { "initial": 9, "step": 9 },
+  "toc": { "forSel": "#post-body", "headings": "h2,h3" },
+  "formGuard": { "timeout": 10000, "sending": "Sending..." },
+  "trim": { "max": 120, "moreLabel": "続きを読む" }
+}

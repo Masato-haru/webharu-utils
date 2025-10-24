@@ -1,0 +1,14 @@
+{
+  "paginate": "[components.pagination]\nselector.list=.w-dyn-items#{{listId}}\nitemsPerPage={{per}}\n",
+  "breadcrumbs": "[components.breadcrumbs]\nselector.host=[data-wu=\"breadcrumbs\"]\nhomeLabel={{homeLabel}}\n",
+  "filter": "[components.filter]\nselector.scope={{scope}}\nkeys={{keys}}\n",
+  "sort": "[components.sort]\nselector.list=#{{listId}}\n",
+  "loadmore": "[components.loadmore]\nselector.list=#{{listId}}\ninitial={{initial}}\nstep={{step}}\n",
+  "toc": "[components.toc]\nselector.host=[data-wu=\"toc\"]\nfor={{forSel}}\nheadings={{headings}}\n",
+  "extLinks": "[components.external_links]\nselector.host=[data-wu=\"ext-links\"]\n",
+  "formGuard": "[components.form_guard]\nselector.host=[data-wu=\"form-guard\"]\ntimeout={{timeout}}\nlabel={{sending}}\n",
+  "utm": "[components.utm_capture]\nselector.host=[data-wu=\"utm\"]\n",
+  "video": "[components.video_auto]\nselector.host=[data-wu=\"video\"]\n",
+  "scrollspy": "[components.scrollspy]\nselector.nav=[data-wu=\"scrollspy\"]\n",
+  "trim": "[components.trim]\nselector.scope=[data-wu=\"trim\"]\nmax={{max}}\nmore={{moreLabel}}\n"
+}

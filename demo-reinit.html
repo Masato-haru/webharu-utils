@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <title>WU.init() 再実行デモ</title>
+  <style>
+    body { font-family: sans-serif; padding: 24px; }
+    .w-dyn-item { padding: 8px; border-bottom: 1px solid #eee; }
+    .wu-controls { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .wu-btn { padding: 6px 12px; cursor: pointer; }
+    .wu-btn[disabled] { opacity: .4; cursor: not-allowed; }
+    .wu-page.is-active { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>WU.init() 再実行デモ</h1>
+
+  <div class="w-dyn-items" id="news-list" data-wu="paginate" data-wu-per="3">
+    <div class="w-dyn-item">ニュース 1</div>
+    <div class="w-dyn-item">ニュース 2</div>
+    <div class="w-dyn-item">ニュース 3</div>
+    <div class="w-dyn-item">ニュース 4</div>
+    <div class="w-dyn-item">ニュース 5</div>
+  </div>
+
+  <div data-wu="pg-controls" data-wu-for="news-list"></div>
+
+  <button id="mock-ajax" style="margin-top:16px;">疑似 Ajax で差し替え</button>
+
+  <div id="demo-log" style="margin-top:24px; padding:16px; border:1px solid #ccc; background:#fafafa;"></div>
+
+  <script src="./assets/webharu-utils.v1.js" defer></script>
+  <script>
+    const rebuildList = () => {
+      const current = document.getElementById('news-list');
+      const fresh = document.createElement('div');
+      fresh.className = 'w-dyn-items';
+      fresh.id = 'news-list';
+      fresh.setAttribute('data-wu', 'paginate');
+      fresh.setAttribute('data-wu-per', '3');
+
+      for (let i = 1; i <= 9; i += 1) {
+        const item = document.createElement('div');
+        item.className = 'w-dyn-item';
+        item.textContent = `新着ニュース ${i}`;
+        fresh.appendChild(item);
+      }
+
+      current.replaceWith(fresh);
+      WU.init();
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      WU.init();
+
+      const logBox = document.getElementById('demo-log');
+      const log = (msg) => {
+        const line = document.createElement('div');
+        line.textContent = msg;
+        logBox.appendChild(line);
+      };
+
+      const visibleLabels = () => (
+        Array.from(document.querySelectorAll('#news-list .w-dyn-item'))
+          .filter((el) => getComputedStyle(el).display !== 'none')
+          .map((el) => el.textContent)
+      );
+
+      const runAutoDemo = () => {
+        log('初期状態: ' + visibleLabels().join(', '));
+
+        setTimeout(() => {
+          const nextBtn = document.querySelector('[data-wu-page="next"]');
+          if (!nextBtn) {
+            log('次へボタンが見つかりませんでした');
+            return;
+          }
+          nextBtn.click();
+
+          setTimeout(() => {
+            log('ページ切り替え後: ' + visibleLabels().join(', '));
+
+            rebuildList();
+
+            setTimeout(() => {
+              log('差し替え後アイテム数: ' + document.querySelectorAll('#news-list .w-dyn-item').length);
+              log('差し替え後ページ1: ' + visibleLabels().join(', '));
+
+              const ctrlNext = document.querySelector('[data-wu-page="next"]');
+              if (!ctrlNext) {
+                log('差し替え後の次へボタンが見つかりませんでした');
+                return;
+              }
+              ctrlNext.click();
+
+              setTimeout(() => {
+                log('差し替え後ページ2: ' + visibleLabels().join(', '));
+                const ctrlNext2 = document.querySelector('[data-wu-page="next"]');
+                if (ctrlNext2) {
+                  ctrlNext2.click();
+
+                  setTimeout(() => {
+                    log('差し替え後ページ3: ' + visibleLabels().join(', '));
+                  }, 200);
+                }
+              }, 200);
+            }, 200);
+          }, 200);
+        }, 200);
+      };
+
+      setTimeout(runAutoDemo, 600);
+    });
+
+    document.getElementById('mock-ajax').addEventListener('click', rebuildList);
+  </script>
+</body>
+</html>
